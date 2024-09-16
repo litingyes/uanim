@@ -2,7 +2,7 @@
   "cSpell.words": [
     "bumpp",
     "preid",
-    "uanim"
+    "utween"
   ],
   // Disable the default formatter, use eslint instead
   "prettier.enable": false,
