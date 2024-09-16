@@ -1,8 +1,9 @@
+import { env } from 'node:process'
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   test: {
-    reporters: ['html', 'default'],
+    reporters: env.GITHUB_ACTIONS ? ['default', 'github-actions'] : ['html', 'default'],
     coverage: {
       provider: 'istanbul',
       enabled: true,
