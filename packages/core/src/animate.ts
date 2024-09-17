@@ -1,0 +1,143 @@
+import { interpolate } from 'd3-interpolate'
+import { Task, type TaskOptions } from './task'
+import { Timer } from './timer'
+import { isArray, isDom, isNil, isObject, isString, TRANSFORM_FIELDS } from './utils'
+
+export type AnimaterTarget = Element | Record<string, unknown>
+export type AnimaterTargets = string | string [] | Element | Element[] | Record<string, unknown>
+export type AnimaterOptions = TaskOptions
+
+export class Animater {
+  targets: Array<Element | Record<string, unknown>> = []
+  timer: Timer = new Timer()
+
+  constructor(targets: AnimaterTargets, attrs: Record<string, unknown>, options: AnimaterOptions) {
+    if (isArray(targets)) {
+      targets.forEach((target) => {
+        if (isString(target)) {
+          (this.targets as Element[]).push(document.querySelector(target) as Element)
+        }
+        else {
+          this.targets = targets as Element[]
+        }
+      })
+    }
+    else if (isDom(targets)) {
+      this.targets = [targets as Element]
+    }
+    else if (isObject(targets)) {
+      this.targets = [targets as Record<string, unknown>]
+    }
+    else {
+      this.targets = [document.querySelector(targets as string) as Element]
+    }
+    this.targets = this.targets.filter(Boolean)
+    this.targets.forEach(target => this.timer.addTask(new AnimaterTask(this.timer, target, attrs, options)))
+  }
+}
+
+export class AnimaterTask extends Task {
+  from: Record<string, unknown> | null = null
+  to: Record<string, unknown> | null = null
+  interpolate: (ReturnType<typeof interpolate>) | null = null
+
+  constructor(timer: Timer, target: AnimaterTarget, attrs: Record<string, unknown>, options: AnimaterOptions) {
+    super((task) => {
+      this.initStates(target, attrs)
+
+      const { startTime, pauseTime, duration } = task
+      const { now } = timer
+      let progress = 0
+      if (now >= startTime) {
+        progress = ((now - startTime - pauseTime) % duration) / duration
+      }
+      const nextAttrs = this.interpolate!(progress) as Record<string, unknown>
+      this.setAttrs(target, nextAttrs)
+    }, options)
+  }
+
+  initStates(target: AnimaterTarget, attrs: Record<string, unknown>) {
+    if (this.from && this.to)
+      return
+
+    if (!isDom(target)) {
+      this.from = structuredClone(target as Record<string, unknown>)
+      this.to = structuredClone(attrs)
+
+      return
+    }
+
+    this.from = Object.keys(attrs).reduce<Record<string, unknown>>((obj, key) => {
+      const type = this.getAttrType(target, key)
+      if (type === 'ATTRIBUTE') {
+        obj[key] = target.getAttribute(key)
+      }
+
+      if (type === 'STYLE') {
+        // @ts-expect-error target.style index
+        obj[key] = target.style[key] || getComputedStyle(target).getPropertyValue(key)
+      }
+
+      if (type === 'TRANSFORM' && !obj.transform) {
+        obj.transition = target.style.transform || getComputedStyle(target).transform
+      }
+
+      return obj
+    }, {})
+
+    this.to = Object.entries(attrs).reduce<Record<string, unknown>>((obj, [key, value]) => {
+      const type = this.getAttrType(target, key)
+      if (type === 'TRANSFORM') {
+        let transform = (obj.transform as string) || target.style.transform || getComputedStyle(target).transform
+
+        if (transform.includes(key)) {
+          transform = transform.replace(new RegExp(`${key}\(\S+\)(?=\s)`), `${key}(${value})`)
+        }
+        else {
+          transform = `${transform.trim()} ` + `${key}(${value})`
+        }
+      }
+      else {
+        obj[key] = value
+      }
+
+      return obj
+    }, {})
+
+    this.interpolate = interpolate(this.from, this.to)
+  }
+
+  getAttrType(target: unknown, key: string) {
+    if (!isDom(target)) {
+      return 'OBJECT_KEY'
+    }
+
+    if (TRANSFORM_FIELDS.includes(key))
+      return 'TRANSFORM'
+
+    // @ts-expect-error target.style index
+    if (!isNil(target.style[key]))
+      return 'STYLE'
+
+    return 'ATTRIBUTE'
+  }
+
+  setAttr(target: AnimaterTarget, key: string, val: unknown) {
+    if (!isDom(target)) {
+      (target as Record<string, unknown>)[key] = val
+      return
+    }
+
+    const attrType = this.getAttrType(target, key)
+    if (key === 'transform' || attrType === 'STYLE') {
+      target.style.transform = String(val)
+      return
+    }
+
+    target.setAttribute(key, String(val))
+  }
+
+  setAttrs(target: AnimaterTarget, attrs: Record<string, unknown>) {
+    Object.entries(attrs).forEach(([key, value]) => this.setAttr(target, key, value))
+  }
+}

@@ -7,7 +7,6 @@
     "lib": ["DOM", "ESNext"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "noPropertyAccessFromIndexSignature": false,
     "outDir": "./dist"
   }
 }

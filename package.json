@@ -10,7 +10,8 @@
     "commit": "git-cz",
     "test": "vitest",
     "release": "bumpp",
-    "prepare": "husky"
+    "prepare": "husky",
+    "build": "pnpm --filter \"@utween/*\" run build"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^3.6.2",
@@ -30,6 +31,7 @@
     "jsdom": "^25.0.0",
     "lint-staged": "^15.2.10",
     "typescript": "^5.6.2",
+    "unbuild": "^2.0.0",
     "vitest": "^2.1.1"
   },
   "config": {

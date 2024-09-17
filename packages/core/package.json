@@ -4,5 +4,27 @@
   "description": "Animation & Transition",
   "author": "litingyes <luz.liting@gmail.com> (https://litingyes.top/)",
   "license": "MIT",
-  "keywords": []
+  "keywords": [],
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/index.d.mts",
+        "require": "./dist/index.d.cts"
+      },
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "unbuild"
+  },
+  "dependencies": {
+    "d3-interpolate": "^3.0.1"
+  },
+  "devDependencies": {
+    "@types/d3-interpolate": "^3.0.4"
+  }
 }

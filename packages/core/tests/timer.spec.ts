@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Task, Timer } from '../src'
-import { FRAME_GAP } from '../src/constants'
+import { FRAME_GAP } from '../src/utils'
 
 let mock = vi.fn(() => console.warn('test timer'))
 

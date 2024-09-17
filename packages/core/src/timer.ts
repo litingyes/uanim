@@ -1,16 +1,16 @@
 import type { Task } from './task'
-import { FRAME_GAP } from './constants'
 import { getNow } from './utils'
+import { FRAME_GAP } from './utils/constants'
 
 export class Timer {
   now = getNow()
   tasks: Task[]
-  status: 'idle' | 'pending' = 'idle'
+  status: 'idle' | 'paused' | 'pending' = 'idle'
 
   constructor(tasks?: Task[]) {
     this.tasks = tasks ?? []
     this.tasks.forEach(task => task.play())
-    this.flush()
+    this.play()
   }
 
   updateNow() {
@@ -20,8 +20,7 @@ export class Timer {
 
   addTask(task: Task) {
     this.tasks.push(task)
-    task.play()
-    this.flush()
+    this.play()
   }
 
   removeTask(task: Task) {
@@ -31,7 +30,7 @@ export class Timer {
   }
 
   flush() {
-    if (this.status === 'pending') {
+    if (this.status === 'pending' || this.status === 'paused') {
       return
     }
 
@@ -65,6 +64,16 @@ export class Timer {
     window.requestAnimationFrame(() => {
       this.flush()
     })
+  }
+
+  play() {
+    this.status = 'idle'
+    this.flush()
+  }
+
+  pause() {
+    this.status = 'paused'
+    this.tasks.forEach(task => task.pause())
   }
 
   cancel() {
