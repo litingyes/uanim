@@ -16,11 +16,18 @@ describe('test timer', () => {
   it('flush', () => {
     const task = new Task(mock)
     const timer = new Timer([task])
-    expect(timer.tasks.length).toBe(0)
+    expect(timer.tasks.length).toBe(1)
 
     vi.advanceTimersByTime(FRAME_GAP)
-    timer.cancel()
     expect(mock).toBeCalledTimes(1)
+
+    timer.cancel()
+    vi.advanceTimersByTime(FRAME_GAP)
+    expect(timer.tasks.length).toBe(0)
+    expect(mock).toBeCalledTimes(2)
+
+    vi.advanceTimersByTime(FRAME_GAP)
+    expect(mock).toBeCalledTimes(2)
   })
 
   it('duration', () => {
@@ -31,10 +38,10 @@ describe('test timer', () => {
     expect(timer.tasks.length).toBe(1)
 
     vi.advanceTimersByTime(FRAME_GAP)
-    expect(mock).toBeCalledTimes(2)
+    expect(mock).toBeCalledTimes(1)
 
     vi.advanceTimersByTime(FRAME_GAP)
-    expect(mock).toBeCalledTimes(3)
+    expect(mock).toBeCalledTimes(2)
   })
 
   it('delay', () => {
@@ -61,8 +68,10 @@ describe('test timer', () => {
     timer.addTask(new Task(mock, {
       delay: 1000,
     }))
+    vi.advanceTimersByTime(FRAME_GAP)
     expect(timer.tasks.length).toBe(2)
 
+    vi.advanceTimersByTime(FRAME_GAP)
     timer.removeTask(task)
     expect(timer.tasks.length).toBe(1)
   })
@@ -74,12 +83,15 @@ describe('test timer', () => {
     const timer = new Timer([task])
     expect(timer.tasks.length).toBe(1)
 
+    vi.advanceTimersByTime(FRAME_GAP)
+    expect(mock).toBeCalledTimes(1)
+
     timer.cancel()
     vi.advanceTimersByTime(FRAME_GAP)
     expect(mock).toBeCalledTimes(2)
+    expect(timer.tasks.length).toBe(0)
 
     vi.advanceTimersByTime(FRAME_GAP)
-    expect(timer.tasks.length).toBe(0)
     expect(mock).toBeCalledTimes(2)
   })
 })

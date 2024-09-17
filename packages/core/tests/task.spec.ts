@@ -58,7 +58,7 @@ describe('test task', () => {
     vi.advanceTimersByTime(1000)
     task.play()
     vi.advanceTimersByTime(FRAME_GAP)
-    expect(mock).toBeCalledTimes(1)
+    expect(mock).toBeCalledTimes(2)
     expect(task.status).toBe('finished')
   })
 

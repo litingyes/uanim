@@ -9,7 +9,6 @@ export class Timer {
 
   constructor(tasks?: Task[]) {
     this.tasks = tasks ?? []
-    this.tasks.forEach(task => task.play())
     this.play()
   }
 
@@ -39,19 +38,24 @@ export class Timer {
     const expiredTasks = []
 
     for (const task of this.tasks) {
-      const entTime = (task.loop || task.status === 'paused') ? Infinity : task.startTime + task.duration + FRAME_GAP
-
-      if (task.startTime > this.now) {
-        continue
-      }
-
-      if (entTime < this.now || task.status === 'finished') {
+      if (task.status === 'finished') {
         expiredTasks.push(task)
         continue
       }
 
       if (task.status !== 'paused') {
         task.play()
+      }
+
+      if (task.startTime > this.now) {
+        continue
+      }
+
+      const entTime = (task.loop || task.status === 'paused') ? Infinity : task.startTime + task.duration + FRAME_GAP
+
+      if (entTime < this.now) {
+        expiredTasks.push(task)
+        continue
       }
     }
     this.status = 'idle'
