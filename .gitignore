@@ -4,3 +4,7 @@ dist
 # test
 /html
 /coverage
+
+# docs
+docs/.vitepress/dist
+docs/.vitepress/cache
