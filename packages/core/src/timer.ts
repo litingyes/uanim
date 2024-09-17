@@ -1,111 +1,75 @@
-export type TimerCallBack = (...args: any[]) => void
-
-export interface TimerOptions {
-  duration?: number
-  delay?: number
-  loop?: boolean
-}
-
-export type TimerStatus = 'idle' | 'playing' | 'paused' | 'finished'
+import type { Task } from './task'
+import { FRAME_GAP } from './constants'
+import { getNow } from './utils'
 
 export class Timer {
-  timeoutId: NodeJS.Timeout | undefined = undefined
-  intervalId: NodeJS.Timeout | undefined = undefined
+  now = getNow()
+  tasks: Task[]
+  status: 'idle' | 'pending' = 'idle'
 
-  cb: TimerCallBack
-  duration = 0
-  delay = 0
-  loop = false
-
-  startTime = 0
-  pauseTime = 0
-  pauseStartTime = 0
-  status: TimerStatus = 'idle'
-
-  constructor(cb: TimerCallBack, options?: TimerOptions) {
-    this.cb = cb
-
-    Object.assign(this, options)
-    if (!this.duration) {
-      this.loop = false
-    }
+  constructor(tasks?: Task[]) {
+    this.tasks = tasks ?? []
+    this.tasks.forEach(task => task.play())
+    this.flush()
   }
 
-  play() {
-    if (this.status === 'finished') {
-      return this
+  updateNow() {
+    this.now = getNow()
+    this.flush()
+  }
+
+  addTask(task: Task) {
+    this.tasks.push(task)
+    task.play()
+    this.flush()
+  }
+
+  removeTask(task: Task) {
+    task.cancel()
+    const index = this.tasks.findIndex(item => item.id === task.id)
+    this.tasks.splice(index, 1)
+  }
+
+  flush() {
+    if (this.status === 'pending') {
+      return
     }
 
-    if (this.status === 'idle') {
-      this.startTime = performance.now()
-      this.pauseTime = 0
-      this.pauseStartTime = 0
-      this.status = 'playing'
+    this.status = 'pending'
+    this.updateNow()
+    const expiredTasks = []
 
-      this.run(this.delay)
-      return this
-    }
+    for (const task of this.tasks) {
+      const entTime = (task.loop || task.status === 'paused') ? Infinity : task.startTime + task.duration + FRAME_GAP
 
-    if (this.status === 'paused') {
-      const now = performance.now()
-      this.pauseTime += now - this.pauseStartTime
-      this.pauseStartTime = 0
-      this.status = 'playing'
-
-      let consumeRemainingTime = 0
-      if (this.duration) {
-        consumeRemainingTime = (now - this.startTime - this.pauseTime) % this.duration
+      if (task.startTime > this.now) {
+        continue
       }
 
-      this.run(consumeRemainingTime)
+      if (entTime < this.now || task.status === 'finished') {
+        expiredTasks.push(task)
+        continue
+      }
 
-      return this
+      if (task.status !== 'paused') {
+        task.play()
+      }
     }
+    this.status = 'idle'
 
-    return this
-  }
+    expiredTasks.forEach(task => this.removeTask(task))
 
-  pause() {
-    this.clear()
-    this.pauseStartTime = performance.now()
-    this.status = 'paused'
+    if (!this.tasks.length)
+      return
+
+    window.requestAnimationFrame(() => {
+      this.flush()
+    })
   }
 
   cancel() {
-    this.clear()
-    this.status = 'finished'
-  }
-
-  clear() {
-    if (this.timeoutId) {
-      clearTimeout(this.timeoutId)
-      this.timeoutId = undefined
-    }
-
-    if (this.intervalId) {
-      clearInterval(this.intervalId)
-      this.intervalId = undefined
-    }
-  }
-
-  run(delay = 0) {
-    window.requestAnimationFrame(() => {
-      this.timeoutId = setTimeout(() => {
-        clearTimeout(this.timeoutId)
-
-        if (this.loop) {
-          this.intervalId = setInterval(() => {
-            this.cb()
-          }, this.duration)
-
-          return
-        }
-
-        this.cb()
-        this.clear()
-        this.status = 'finished'
-        this.clear()
-      }, delay)
+    this.tasks.forEach((task) => {
+      task.cancel()
     })
   }
 }

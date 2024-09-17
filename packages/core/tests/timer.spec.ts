@@ -1,18 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Timer } from '../src'
+import { Task, Timer } from '../src'
+import { FRAME_GAP } from '../src/constants'
 
 let mock = vi.fn(() => console.warn('test timer'))
 
-describe('options', () => {
-  it('downgrade loop', () => {
-    const timer = new Timer(mock, {
-      loop: true,
-    })
-    expect(timer.loop).toBe(false)
-  })
-})
-
-describe('functions', () => {
+describe('test timer', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     mock = vi.fn(() => console.warn('test timer'))
@@ -21,87 +13,73 @@ describe('functions', () => {
     vi.restoreAllMocks()
   })
 
-  it('default options', () => {
-    const timer = new Timer(mock)
-    expect(timer.status).toBe('idle')
+  it('flush', () => {
+    const task = new Task(mock)
+    const timer = new Timer([task])
+    expect(timer.tasks.length).toBe(0)
 
-    timer.play()
-
-    vi.runAllTimers()
+    vi.advanceTimersByTime(FRAME_GAP)
+    timer.cancel()
     expect(mock).toBeCalledTimes(1)
-    expect(timer.status).toBe('finished')
+  })
+
+  it('duration', () => {
+    const task = new Task(mock, {
+      duration: 1000,
+    })
+    const timer = new Timer([task])
+    expect(timer.tasks.length).toBe(1)
+
+    vi.advanceTimersByTime(FRAME_GAP)
+    expect(mock).toBeCalledTimes(2)
+
+    vi.advanceTimersByTime(FRAME_GAP)
+    expect(mock).toBeCalledTimes(3)
   })
 
   it('delay', () => {
-    const timer = new Timer(mock, {
+    const task = new Task(mock, {
       delay: 1000,
     })
-    expect(timer.status).toBe('idle')
+    const timer = new Timer([task])
+    expect(timer.tasks.length).toBe(1)
 
-    timer.play()
+    vi.advanceTimersByTime(FRAME_GAP)
+    expect(mock).toBeCalledTimes(0)
 
-    vi.advanceTimersByTime(100)
-    expect(mock).not.toHaveBeenCalled()
-    expect(timer.status).toBe('playing')
-
-    vi.advanceTimersByTime(1000)
+    vi.advanceTimersByTime(1000 + FRAME_GAP)
     expect(mock).toBeCalledTimes(1)
-    expect(timer.status).toBe('finished')
   })
 
-  it('duration & loop', () => {
-    const timer = new Timer(mock, {
-      duration: 1000,
-      loop: true,
+  it('addTask & removeTask', () => {
+    const task = new Task(mock, {
+      delay: 1000,
     })
-    expect(timer.status).toBe('idle')
+    const timer = new Timer([task])
+    expect(timer.tasks.length).toBe(1)
 
-    timer.play()
+    timer.addTask(new Task(mock, {
+      delay: 1000,
+    }))
+    expect(timer.tasks.length).toBe(2)
 
-    vi.advanceTimersByTime(100)
-    expect(mock).not.toHaveBeenCalled()
-    expect(timer.status).toBe('playing')
+    timer.removeTask(task)
+    expect(timer.tasks.length).toBe(1)
+  })
 
-    vi.advanceTimersByTime(1000)
-    expect(mock).toBeCalledTimes(1)
-    expect(timer.status).toBe('playing')
-
-    vi.advanceTimersByTime(1000)
-    expect(mock).toBeCalledTimes(2)
-    expect(timer.status).toBe('playing')
+  it('cancel', () => {
+    const task = new Task(mock, {
+      duration: 1000,
+    })
+    const timer = new Timer([task])
+    expect(timer.tasks.length).toBe(1)
 
     timer.cancel()
-    expect(timer.status).toBe('finished')
-  })
-
-  it ('play & pause', () => {
-    const timer = new Timer(mock, {
-      duration: 1000,
-      loop: true,
-    })
-    expect(timer.status).toBe('idle')
-
-    timer.play()
-
-    vi.advanceTimersByTime(100)
-    expect(mock).not.toHaveBeenCalled()
-    expect(timer.status).toBe('playing')
-
-    vi.advanceTimersByTime(1000)
-    expect(mock).toBeCalledTimes(1)
-    expect(timer.status).toBe('playing')
-
-    timer.pause()
-
-    vi.advanceTimersByTime(1000)
-    expect(mock).toBeCalledTimes(1)
-    expect(timer.status).toBe('paused')
-
-    timer.play()
-
-    vi.advanceTimersByTime(100)
-    vi.advanceTimersByTime(1000)
+    vi.advanceTimersByTime(FRAME_GAP)
     expect(mock).toBeCalledTimes(2)
-    expect(timer.status).toBe('playing')
+
+    vi.advanceTimersByTime(FRAME_GAP)
+    expect(timer.tasks.length).toBe(0)
+    expect(mock).toBeCalledTimes(2)
   })
 })
