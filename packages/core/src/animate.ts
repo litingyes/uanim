@@ -1,4 +1,4 @@
-import { interpolate } from 'd3-interpolate'
+import { interpolate, interpolateTransformCss } from 'd3-interpolate'
 import { Task, type TaskOptions } from './task'
 import { Timer } from './timer'
 import { isArray, isDom, isNil, isObject, isString, TRANSFORM_FIELDS } from './utils'
@@ -39,7 +39,6 @@ export class Animater {
 export class AnimaterTask extends Task {
   from: Record<string, unknown> | null = null
   to: Record<string, unknown> | null = null
-  interpolate: (ReturnType<typeof interpolate>) | null = null
 
   constructor(timer: Timer, target: AnimaterTarget, attrs: Record<string, unknown>, options: AnimaterOptions) {
     super((task) => {
@@ -49,10 +48,9 @@ export class AnimaterTask extends Task {
       const { now } = timer
       let progress = 0
       if (now >= startTime) {
-        progress = ((now - startTime - pauseTime) % duration) / duration
+        progress = Math.min((now - startTime - pauseTime) / duration, 1)
       }
-      const nextAttrs = this.interpolate!(progress) as Record<string, unknown>
-      this.setAttrs(target, nextAttrs)
+      this.setAttrs(target, progress)
     }, options)
   }
 
@@ -69,17 +67,22 @@ export class AnimaterTask extends Task {
 
     this.from = Object.keys(attrs).reduce<Record<string, unknown>>((obj, key) => {
       const type = this.getAttrType(target, key)
+
       if (type === 'ATTRIBUTE') {
         obj[key] = target.getAttribute(key)
       }
 
       if (type === 'STYLE') {
         // @ts-expect-error target.style index
-        obj[key] = target.style[key] || getComputedStyle(target).getPropertyValue(key)
+        obj[key] = target.style[key] || getComputedStyle(target)[key]
       }
 
       if (type === 'TRANSFORM' && !obj.transform) {
-        obj.transition = target.style.transform || getComputedStyle(target).transform
+        obj.transform = target.style.transform || getComputedStyle(target).transform
+
+        if (obj.transform === 'none') {
+          obj.transform = ''
+        }
       }
 
       return obj
@@ -93,9 +96,13 @@ export class AnimaterTask extends Task {
         if (transform.includes(key)) {
           transform = transform.replace(new RegExp(`${key}\(\S+\)(?=\s)`), `${key}(${value})`)
         }
+        else if (transform === 'none') {
+          transform = `${key}(${value})`
+        }
         else {
           transform = `${transform.trim()} ` + `${key}(${value})`
         }
+        obj.transform = transform
       }
       else {
         obj[key] = value
@@ -103,8 +110,6 @@ export class AnimaterTask extends Task {
 
       return obj
     }, {})
-
-    this.interpolate = interpolate(this.from, this.to)
   }
 
   getAttrType(target: unknown, key: string) {
@@ -122,22 +127,31 @@ export class AnimaterTask extends Task {
     return 'ATTRIBUTE'
   }
 
-  setAttr(target: AnimaterTarget, key: string, val: unknown) {
+  setAttr(target: AnimaterTarget, key: string, progress: number) {
     if (!isDom(target)) {
-      (target as Record<string, unknown>)[key] = val
+      // @ts-expect-error interpolate params
+      (target as Record<string, unknown>)[key] = interpolate(this.from![key], this.to![key])(progress)
       return
     }
 
     const attrType = this.getAttrType(target, key)
-    if (key === 'transform' || attrType === 'STYLE') {
-      target.style.transform = String(val)
+    if (key === 'transform' || attrType === 'TRANSFORM') {
+      target.style.transform = interpolateTransformCss(this.from!.transform as string, this.to!.transform as string)(progress)
+      return
+    }
+    if (attrType === 'STYLE') {
+      // @ts-expect-error target.style index
+      target.style[key] = interpolate(this.from![key], this.to![key])(progress)
       return
     }
 
-    target.setAttribute(key, String(val))
+    // @ts-expect-error target.style index
+    target.setAttribute(key, interpolate(this.from![key], this.to![key])(progress))
   }
 
-  setAttrs(target: AnimaterTarget, attrs: Record<string, unknown>) {
-    Object.entries(attrs).forEach(([key, value]) => this.setAttr(target, key, value))
+  setAttrs(target: AnimaterTarget, progress: number) {
+    Object.keys(this.to!).forEach((key) => {
+      this.setAttr(target, key, progress)
+    })
   }
 }
