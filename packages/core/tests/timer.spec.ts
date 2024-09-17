@@ -16,6 +16,7 @@ describe('test timer', () => {
   it('flush', () => {
     const task = new Task(mock)
     const timer = new Timer([task])
+    timer.play()
     expect(timer.tasks.length).toBe(1)
 
     vi.advanceTimersByTime(FRAME_GAP)
@@ -35,6 +36,7 @@ describe('test timer', () => {
       duration: 1000,
     })
     const timer = new Timer([task])
+    timer.play()
     expect(timer.tasks.length).toBe(1)
 
     vi.advanceTimersByTime(FRAME_GAP)
@@ -49,6 +51,7 @@ describe('test timer', () => {
       delay: 1000,
     })
     const timer = new Timer([task])
+    timer.play()
     expect(timer.tasks.length).toBe(1)
 
     vi.advanceTimersByTime(FRAME_GAP)
@@ -63,6 +66,7 @@ describe('test timer', () => {
       delay: 1000,
     })
     const timer = new Timer([task])
+    timer.play()
     expect(timer.tasks.length).toBe(1)
 
     timer.addTask(new Task(mock, {
@@ -81,6 +85,7 @@ describe('test timer', () => {
       duration: 1000,
     })
     const timer = new Timer([task])
+    timer.play()
     expect(timer.tasks.length).toBe(1)
 
     vi.advanceTimersByTime(FRAME_GAP)

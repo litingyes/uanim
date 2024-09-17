@@ -9,7 +9,6 @@ export class Timer {
 
   constructor(tasks?: Task[]) {
     this.tasks = tasks ?? []
-    this.play()
   }
 
   updateNow() {
